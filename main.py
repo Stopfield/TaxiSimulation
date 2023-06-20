@@ -1,5 +1,7 @@
 from simpy import Resource, Environment
 import pandas as pd
+import statistics as st
+import numpy as np
 
 ds = pd.read_csv("train.csv")
 
@@ -12,7 +14,13 @@ class Taxi:
 
 
 class Passageiro:
-    def __init__(self, env: Environment, id: int, tempo_viagem: int, hora_embarque: int):
+    def __init__(
+        self,
+        env: Environment,
+        id: int,
+        tempo_viagem: int,
+        hora_embarque: int
+    ):
         self.env = env
         self.id = id
         self.tempo_viagem = tempo_viagem
@@ -31,6 +39,7 @@ class Cidade:
         Demora 'passageiro.tempo_viagem' para desocupá-lo.
         """
         yield self.env.timeout(passageiro.hora_embarque)
+        print(f"Passageiro {passageiro.id} quer usar o táxi em {self.env.now}")
         with self.taxis.request() as taxi:
             yield taxi
             print(f"Passageiro {passageiro.id} embarcou em {self.env.now}")
@@ -38,18 +47,23 @@ class Cidade:
             print(f"Passageiro {passageiro.id} desembarcou em {self.env.now}")
 
 
-env = Environment()
-# Encontrar qtd média de passageiros
-taxis = Resource(env, capacity=2)
-cidade = Cidade(env, "nova_york", taxis)
-p1 = Passageiro(env, 1, 1, 2)
-p2 = Passageiro(env, 2, 2, 5)
-p3 = Passageiro(env, 3, 5, 2)
-p4 = Passageiro(env, 4, 2, 2)
+if __name__ == "__main__":
+    # Criar N pessoas para serem calculadas em um dia
+    num_pessoas = 10
+    num_taxis = 3
+    env = Environment()
 
-env.process(cidade.embarcar(p1))
-env.process(cidade.embarcar(p2))
-env.process(cidade.embarcar(p3))
-env.process(cidade.embarcar(p4))
+    passageiros = [
+        Passageiro(env, id, abs(np.random.normal(0, 1)), abs(np.random.normal(0, 1))) for id in range(num_pessoas)
+    ]
 
-env.run()
+    # Encontrar qtd média de passageiros
+    taxis = Resource(env, capacity=num_taxis)
+    cidade = Cidade(env, "nova_york", taxis)
+
+    print([p.tempo_viagem for p in passageiros])
+    print([p.hora_embarque for p in passageiros])
+    for p in passageiros:
+        env.process(cidade.embarcar(p))
+
+    env.run()
