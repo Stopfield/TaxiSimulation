@@ -131,22 +131,14 @@ if __name__ == "__main__":
     multiprocessing.freeze_support()
     a = Simulation()
     resultados = []
-    pool = multiprocessing.Pool(100)
-    c = 1
+    c = 100
     d = 4000
-    for i in range(c, d):
-        res = pool.apply_async(a.executar, (i, ))
-        resultados.append(res)
+    for i in range(c, d, 100):
+        resultados.append(a.executar(i))
 
     lista_satisfacao = []
     for res in resultados:
-        tempos_espera, lucro_taxis, satisfacao = res.get()
+        tempos_espera, lucro_taxis, satisfacao = res
         lista_satisfacao.append(satisfacao)
 
-    print("aaaaaa")
-    
-    pool.close()
-    pool.join()
-
-    plt.plot(range(c, d), lista_satisfacao)
-    plt.show()
+    print(lista_satisfacao)
