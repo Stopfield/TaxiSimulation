@@ -2,14 +2,24 @@ from simpy import Resource, Environment
 import pandas as pd
 import statistics as st
 import numpy as np
-
-ds = pd.read_csv("train.csv")
+import matplotlib.pyplot as plt
 
 
 class Taxi:
     def __init__(self, env, id):
         self.env = env
         self.id = id
+        self.tesouro = 0
+        ...
+
+    def funcao_lucro_taxi(self, gasolina, taxas):
+        """
+        Com um táxi, quanto tu gasta em um dia?
+        """
+        # Gasolina mais 10% de taxa em cima do lucro
+        custo = (0.0007 * 24 * 60 ** 2) + 0.1 * self.tesouro
+        lucro = self.tesouro - custo
+        return lucro
         ...
 
 
@@ -19,20 +29,23 @@ class Passageiro:
         env: Environment,
         id: int,
         tempo_viagem: int,
-        hora_embarque: int 
+        hora_embarque: int
     ):
         self.env = env
         self.id = id
         self.tempo_viagem = tempo_viagem
         # Que horas o passageiro vai embarcar no dia (em segundos)
-        self.hora_embarque = hora_embarque * 60 ** 3
+        self.hora_embarque = hora_embarque
         self.tempo_espera = 0
+        self.satisfacao = 0
 
 
 class Cidade:
     def __init__(self, env: Environment, id: int, taxis: Resource):
         self.env = env
         self.taxis = taxis
+        self.lucro_taxis = 0
+        self.historico_lucro = []
 
     def embarcar(self, passageiro: Passageiro):
         """
@@ -49,43 +62,71 @@ class Cidade:
         with self.taxis.request() as taxi:
             yield taxi
             passageiro.tempo_espera = self.env.now - inicio
+            if passageiro.tempo_espera <= 90:
+                passageiro.satisfacao = 1
+            else:
+                passageiro.satisfacao = (1 / passageiro.tempo_espera)
             print(f"Passageiro {passageiro.id} embarcou em {self.env.now}. Terminando timer")
             yield self.env.timeout(passageiro.tempo_viagem)
             print(f"Passageiro {passageiro.id} desembarcou em {self.env.now}")
+            self.lucro_taxis += 0.3593 * passageiro.tempo_viagem
+            self.historico_lucro.append(self.lucro_taxis)
 
 
 if __name__ == "__main__":
-    # Criar N pessoas para serem calculadas em um dia
-    num_pessoas = 20
-    num_taxis = 3
+    # Cerca de 8015 pessoas em média em um dia
+    num_taxis = 40000
     env = Environment()
 
-    # passageiros = [
-    #     Passageiro(env, id, abs(np.random.normal(0, 1)), abs(np.random.normal(0, 1))) for id in range(num_pessoas)
-    # ]
+    passageiros_por_horas = [
+        293, 212, 154, 115, 87, 82, 183, 305, 368, 372,
+        360, 376, 395, 393, 408, 395, 353, 420, 498, 496, 
+        462, 463, 442, 383
+    ]
+
+    passageiros_por_minuto = [ round(i / 60) for i in passageiros_por_horas ]
+
+    mean = 6.3810469205671305
+    sigma =  0.7190521266362504
 
     passageiros = []
-    passageiros.append(Passageiro(env, 0, 4, 0))
-    passageiros.append(Passageiro(env, 1, 7, 0))
-    passageiros.append(Passageiro(env, 2, 2, 0))
-    passageiros.append(Passageiro(env, 3, 4, 0))
-    passageiros.append(Passageiro(env, 4, 10, 0))
-    passageiros.append(Passageiro(env, 5, 4, 0))
-    passageiros.append(Passageiro(env, 6, 7, 0))
-    passageiros.append(Passageiro(env, 7, 4, 0))
-    passageiros.append(Passageiro(env, 8, 3, 0))
+    id = 0
+    for hora in range(24):
+        print(hora)
+        num_passageiros = passageiros_por_minuto[hora]
+        for minuto in range(60):
+            passageiros.append([
+                Passageiro(env, id + i, abs(np.random.lognormal(mean=mean, sigma=sigma)), (60 * hora) + minuto ) for i in range(num_passageiros) 
+            ])
+            id += 1
 
-    # Encontrar qtd média de passageiros
     taxis = Resource(env, capacity=num_taxis)
     cidade = Cidade(env, "nova_york", taxis)
 
-    print([p.tempo_viagem for p in passageiros])
-    print([p.hora_embarque for p in passageiros])
-    for p in passageiros:
-        env.process(cidade.embarcar(p))
-
+    for lista in passageiros:
+        for p in lista:
+            env.process(cidade.embarcar(p))
 
     env.run()
 
-    for i in passageiros:
-        print(f"{i.id} = {i.tempo_viagem}")
+    tempos_espera = []
+    satisfacao = []
+    for lista in passageiros:
+        for i in lista:
+            print(f"{i.id} = {i.tempo_espera} | {i.tempo_viagem}")
+            print(f"{i.id} = {i.satisfacao}")
+            tempos_espera.append(i.tempo_espera)
+            satisfacao.append(i.satisfacao)
+
+    print(f"Total pessoas no dia {sum(passageiros_por_horas)}")
+    print(f"Média do tempo de espera: {st.mean(tempos_espera)}")
+    print(f"Número de Táxis: {num_taxis} ")
+    print(f"Lucro total: {cidade.lucro_taxis} ")
+    print(f"Satisfação média: {st.mean(satisfacao)} ")
+
+
+    # Lucro
+    #plt.plot(np.linspace(min(cidade.historico_lucro), max(cidade.historico_lucro), len(cidade.historico_lucro)), cidade.historico_lucro)
+    plt.plot(np.linspace(min(satisfacao), max(satisfacao), len(satisfacao)), satisfacao)
+    plt.plot(np.linspace(min(satisfacao), max(satisfacao), len(satisfacao)), satisfacao)
+    plt.show()
