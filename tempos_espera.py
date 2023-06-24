@@ -1,6 +1,8 @@
 import pandas as pd
 import statistics as st
 import matplotlib.pyplot as plt
+from scipy.stats import lognorm
+import numpy as np
 import math
 
 ds = pd.read_csv("train.csv")
@@ -26,16 +28,21 @@ print(len(tempos_viagem_sem_outliers))
 print(st.mean(tempos_viagem_sem_outliers))
 print(st.mean(tempos_viagem))
 
-# Análise de correlação
-x = [tempos_viagem_sem_outliers[x] for x in range(len(tempos_viagem_sem_outliers)) if x % 2 == 0]
-y = [tempos_viagem_sem_outliers[x] for x in range(len(tempos_viagem_sem_outliers)) if x % 2 != 0]
-plt.plot(x, y, 'o')
-plt.show()
 
 # Histograma
 k = round(1 + 3.3 * math.log10(len(tempos_viagem_sem_outliers)))
 h = (max(tempos_viagem_sem_outliers) - min(tempos_viagem_sem_outliers)) / k
-plt.hist(tempos_viagem_sem_outliers, bins=k)
-plt.show()
 
-# Teste de aderência
+mu = st.mean(np.log(tempos_viagem_sem_outliers))
+sigma = st.stdev(np.log(tempos_viagem_sem_outliers))
+
+x = np.linspace(min(tempos_viagem_sem_outliers), max(tempos_viagem_sem_outliers), 100)
+y = np.random.lognormal(mu, sigma, 100)
+pdf = (np.exp(-(np.log(x) - mu)**2 / (2 * sigma**2)) / (x * sigma * np.sqrt(2 * np.pi)))
+
+
+print(f"Média: {st.mean(tempos_viagem_sem_outliers)}")
+print(f"Stdev: {st.stdev(tempos_viagem_sem_outliers)}")
+
+print(mu, sigma)
+print(np.random.lognormal(mean=mu, sigma=sigma))

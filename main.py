@@ -37,6 +37,9 @@ class Cidade:
         self.taxis = taxis
         self.lucro_taxis = 0
         self.historico_lucro = []
+        self.precos_viagem = []
+        # 10$ por dia para manutenção
+        self.custo = 10 * taxis.capacity
 
     def embarcar(self, passageiro: Passageiro):
         """
@@ -60,8 +63,11 @@ class Cidade:
             print(f"Passageiro {passageiro.id} embarcou em {self.env.now}. Terminando timer")
             yield self.env.timeout(passageiro.tempo_viagem)
             print(f"Passageiro {passageiro.id} desembarcou em {self.env.now}")
-            self.lucro_taxis += 0.3593 * passageiro.tempo_viagem
+            self.lucro_taxis += (0.3593 * passageiro.tempo_viagem) * 0.8
+            yield self.env.timeout(passageiro.tempo_viagem)
+            self.custo += 0.0007 * passageiro.tempo_viagem
             self.historico_lucro.append(self.lucro_taxis)
+            self.precos_viagem.append(0.3593 * passageiro.tempo_viagem)
 
 class Simulation:
     def __init__(self) -> None:
@@ -79,16 +85,17 @@ class Simulation:
         ]
 
         passageiros_por_minuto = [ round(i / 60) for i in passageiros_por_horas ]
-
+        passageiros_por_minuto = [3 for i in range(len(passageiros_por_horas))]
         mean = 6.3810469205671305
         sigma =  0.7190521266362504
 
         passageiros = []
         id = 0
+    
         for hora in range(24):
             print(hora)
             num_passageiros = passageiros_por_minuto[hora]
-            for minuto in range(60):
+            for minuto in range(0, 60, 10):
                 passageiros.append([
                     Passageiro(env, id + i, abs(np.random.lognormal(mean=mean, sigma=sigma)), (60 * hora) + minuto ) for i in range(num_passageiros) 
                 ])
@@ -115,7 +122,8 @@ class Simulation:
         print(f"Total pessoas no dia {sum(passageiros_por_horas)}")
         print(f"Média do tempo de espera: {st.mean(tempos_espera)}")
         print(f"Número de Táxis: {num_taxis} ")
-        print(f"Lucro total: {cidade.lucro_taxis} ")
+        print(f"Lucro total: {cidade.lucro_taxis - cidade.custo} ")
+        print(f"Custo total: {cidade.custo} ")
         print(f"Satisfação média: {st.mean(satisfacao)} ")
 
 
@@ -125,20 +133,26 @@ class Simulation:
         # plt.plot(np.linspace(min(satisfacao), max(satisfacao), len(satisfacao)), satisfacao)
         # plt.show()
 
-        return (st.mean(tempos_espera), cidade.lucro_taxis, st.mean(satisfacao))
+        return (st.mean(tempos_espera), cidade.lucro_taxis - cidade.custo , st.mean(satisfacao))
 
 if __name__ == "__main__":
     multiprocessing.freeze_support()
     a = Simulation()
     resultados = []
     c = 100
-    d = 4000
-    for i in range(c, d, 100):
+    d = 400
+    satis = pd.DataFrame()
+    for i in range(c, d, 10):
         resultados.append(a.executar(i))
 
     lista_satisfacao = []
+    lista_lucro = []
     for res in resultados:
         tempos_espera, lucro_taxis, satisfacao = res
         lista_satisfacao.append(satisfacao)
-
+        lista_lucro.append(lucro_taxis)
+    
+    print(lista_lucro)
     print(lista_satisfacao)
+
+    

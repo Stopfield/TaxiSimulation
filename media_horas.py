@@ -30,7 +30,7 @@ def to_list(string):
 novo_df = pd.DataFrame()
 medias = []
 for i in range(24):
-    medias.append(st.mean(ds[f"{i}"].tolist()))
+    medias.append(round(st.mean(ds[f"{i}"].tolist())))
 print(medias)
 plt.plot(range(24), medias)
 plt.show()
