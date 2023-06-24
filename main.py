@@ -147,12 +147,15 @@ if __name__ == "__main__":
 
     lista_satisfacao = []
     lista_lucro = []
+    lista_espera = []
     for res in resultados:
         tempos_espera, lucro_taxis, satisfacao = res
         lista_satisfacao.append(satisfacao)
+        lista_espera.append(tempos_espera)
         lista_lucro.append(lucro_taxis)
     
     print(lista_lucro)
     print(lista_satisfacao)
+    print(lista_espera)
 
     
